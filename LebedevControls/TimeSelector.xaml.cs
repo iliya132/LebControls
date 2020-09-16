@@ -12,11 +12,11 @@ namespace LebedevControls
 {
     public partial class TimeSelector : UserControl
     {
-        private static DependencyProperty MinimumTimeSelectedProperty = DependencyProperty.Register("MinTimeSelected", typeof(TimeSpan), typeof(TimeSelector));
-        private static DependencyProperty MaximumTimeSelectedProperty = DependencyProperty.Register("MaxTimeSelected", typeof(TimeSpan), typeof(TimeSelector));
+        private static DependencyProperty MinimumTimeSelectedProperty = DependencyProperty.Register("MinTimeSelected", typeof(TimeSpan), typeof(TimeSelector), new PropertyMetadata(new TimeSpan(9, 0, 0), OnSelectedTimeChanged));
+        private static DependencyProperty MaximumTimeSelectedProperty = DependencyProperty.Register("MaxTimeSelected", typeof(TimeSpan), typeof(TimeSelector), new PropertyMetadata(new TimeSpan(9, 15, 0), OnSelectedTimeChanged));
         private static DependencyProperty StartTimeProperty = DependencyProperty.Register("StartTime", typeof(TimeSpan), typeof(TimeSelector), new PropertyMetadata(new TimeSpan(7, 0, 0), OnTimeLimitChanged));
         private static DependencyProperty EndTimeProperty = DependencyProperty.Register("EndTime", typeof(TimeSpan), typeof(TimeSelector), new PropertyMetadata(new TimeSpan(19, 15, 0), OnTimeLimitChanged));
-        private static DependencyProperty BusyTimeProperty = DependencyProperty.Register("BusyTime", typeof(List<(TimeSpan, TimeSpan)>), typeof(TimeSelector), new PropertyMetadata(null, OnBusyTimeChanged));
+        private static DependencyProperty BusyTimeProperty = DependencyProperty.Register("BusyTime", typeof(List<TimeSpan[]>), typeof(TimeSelector), new PropertyMetadata(null, OnBusyTimeChanged));
 
         private static void OnBusyTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -28,7 +28,12 @@ namespace LebedevControls
             }
         }
 
-        public List<(TimeSpan, TimeSpan)> BusyTime { get; set; }
+        public List<TimeSpan[]> BusyTime
+        {
+            get { return (List<TimeSpan[]>)GetValue(BusyTimeProperty); }
+            set { SetValue(BusyTimeProperty, value); }
+        }
+
         private static void OnTimeLimitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             TimeSelector control = (TimeSelector)d;
@@ -36,6 +41,15 @@ namespace LebedevControls
             {
                 control.ClearGrid();
                 control.NewInitializeGrid();
+            }
+        }
+
+        private static void OnSelectedTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            TimeSelector control = (TimeSelector)d;
+            if (e.NewValue != null)
+            {
+
             }
         }
 
@@ -76,14 +90,7 @@ namespace LebedevControls
         public TimeSelector()
         {
             InitializeComponent();
-            GenerateBusyTimeTest();
             NewInitializeGrid();
-        }
-
-        private void GenerateBusyTimeTest()
-        {
-            BusyTime = new List<(TimeSpan, TimeSpan)>();
-            BusyTime.Add((new TimeSpan(7,0,0), new TimeSpan(13,0,0)));
         }
 
         private void ClearGrid()
@@ -142,6 +149,8 @@ namespace LebedevControls
             }
             MarkBusyTime();
         }
+
+
 
         private Border GenerateDefaultBorder()
         {
@@ -218,6 +227,8 @@ namespace LebedevControls
                 rectangle.Visibility = Visibility.Hidden;
             }
             MarkBusyTime();
+            Select(AllBlocks.Where(i => (i.start < MaxTimeSelected && i.start >= MinTimeSelected) ||
+                                            (i.end <= MaxTimeSelected && i.end > MinTimeSelected)));
         }
 
         private void Slider_MouseMove(object sender, MouseEventArgs e)
@@ -253,10 +264,10 @@ namespace LebedevControls
         {
             if (BusyTime == null)
                 return;
-            foreach((TimeSpan, TimeSpan) item in BusyTime)
+            foreach(TimeSpan[] item in BusyTime)
             {
-                List<TimedBlock> blocks = AllBlocks.Where(i => (i.start <= item.Item2 && i.start >= item.Item1) ||
-                                                                (i.end <= item.Item2 && i.end >= item.Item1)).
+                List<TimedBlock> blocks = AllBlocks.Where(i => (i.start < item[1] && i.start >= item[0]) ||
+                                                                (i.end <= item[1] && i.end > item[0])).
                                                                 ToList();
 
                 foreach (TimedBlock block in blocks)
